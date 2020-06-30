@@ -20,8 +20,7 @@ const videoSegmentStream = (videoFilePath, sequence, segmentSize) => {
 };
 
 const server = http.createServer( (req, res) => {
-    res.on('end', () => console.log(`Chunk sent: ${req.url}`));
-
+    
     if(req.url.match('playlist.m3u8')){
         const headers = {
             'Content-Type':'text',
@@ -29,34 +28,35 @@ const server = http.createServer( (req, res) => {
         };
         res.writeHead(200, headers);
         res.write(playlist);
-        res.end()
+        res.end();
 
     } else if (req.url.match(`.${VIDEO_EXT}`)){
 
-        console.log(req.url);
+        console.log(`Video segment requested: ${req.url}`);
 
-        const size = fs.statSync(VIDEO_FILE_PATH).size;
         const headers = {
-            // 'Content-Length': `${SEGMENT_SIZE}`,
+            // 'Content-Length': `${5000}`,
             // 'Content-Type': 'video/mp2t'
-            'Content-Type': 'video/mp2t'
+            'Content-Type': 'application/vnd.apple.mpegurl'
         };
         
         const sequence = req.url.replace(`.${VIDEO_EXT}`, '').replace('/seq-','');
-        const videoSegmentStreamToSend = videoSegmentStream(VIDEO_FILE_PATH, +sequence, SEGMENT_SIZE);
+        const readStream = videoSegmentStream(VIDEO_FILE_PATH, +sequence, SEGMENT_SIZE);
 
-        if(videoSegmentStreamToSend.error) {
+        readStream.on('end', () => console.log(`Video segment sent: ${req.url.replace('/', '')}`));
+
+        if(readStream.error) {
             res.writeHead(500);
             return res.end();
         };
 
         res.writeHead(200, headers);
-        videoSegmentStreamToSend.pipe(res, {end: true});
+        readStream.pipe(res);
     } else {
         res.writeHead(404); // Default will always be 200
     };
 });
 
-server.listen( PORT, () => console.log(`Server listen at port: ${PORT}`));
+server.listen( PORT, () => console.log(`HLS server listen at port: ${PORT}`));
 
 // http://localhost:3000/playlist.m3u8
