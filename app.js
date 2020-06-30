@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { getVideoDurationInSeconds } = require('get-video-duration');
 const playListGenerator = require('./helpers/playlistGenerator');
 
 const PORT = 3000;
@@ -8,8 +9,8 @@ const VIDEO_EXT = 'ts';
 const VIDEO_FILE_PATH = path.join(__dirname, `video/beach.${VIDEO_EXT}`);
 const SEGMENT_SIZE = 10000000;
 
+
 const size = fs.statSync(VIDEO_FILE_PATH).size;
-const playlist = playListGenerator(size, SEGMENT_SIZE, 'ts');
 
 const videoSegmentStream = (videoFilePath, sequence, segmentSize) => {
     if(!fs.existsSync(videoFilePath)) return {error: 'File not found'};
@@ -19,8 +20,12 @@ const videoSegmentStream = (videoFilePath, sequence, segmentSize) => {
     return fs.createReadStream(videoFilePath, {start, end});
 };
 
-const server = http.createServer( (req, res) => {
-    
+const server = http.createServer( async (req, res) => {
+
+    const videoDurationInSeconds = await getVideoDurationInSeconds(VIDEO_FILE_PATH);
+
+    const playlist = playListGenerator(size, SEGMENT_SIZE, 'ts', videoDurationInSeconds);
+
     if(req.url.match('playlist.m3u8')){
         const headers = {
             'Content-Type':'text',
