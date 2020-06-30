@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 const playListStart = `\
 #EXTM3U
 #EXT-X-MEDIA-SEQUENCE:0
@@ -7,17 +9,20 @@ const playListStart = `\
 const playListEnd = `
 #EXT-X-ENDLIST`;
 
-const segmentTemplate = (sequence, fileExtension, stream) => {
-    return `#EXTINF:2,\n${stream ? `/${stream}` : ''}seq-${sequence}.${fileExtension}\n`;
+const segmentTemplate = (sequence, fileExtension, segmentDuration, stream) => {
+    return `#EXTINF:${segmentDuration},\n${stream ? `/${stream}` : ''}seq-${sequence}.${fileExtension}\n`;
 };
 
-const playListGenerator = (videoFileSize, segmentSize, fileExtension, stream) => {
+const playListGenerator = (videoFileSize, segmentSize, fileExtension, videoDurationInSeconds, stream) => {
+
+    const segmentDuration = (videoDurationInSeconds * (+segmentSize / +videoFileSize)).toFixed(1);
+
     const segmentsCount = parseInt(videoFileSize / segmentSize);
 
     let playListBody = '';
     
     for (let sequence = 0; sequence < segmentsCount; sequence++) {
-        playListBody = playListBody + segmentTemplate(sequence, fileExtension);
+        playListBody = playListBody + segmentTemplate(sequence, fileExtension, segmentDuration);
     };
 
     return playListStart + playListBody + playListEnd;
