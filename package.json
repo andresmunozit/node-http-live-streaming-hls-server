@@ -1,0 +1,12 @@
+{
+  "name": "hls",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "dev": "nodemon app.js"
+  },
+  "keywords": [],
+  "author": "am@andresmunozit.com",
+  "license": "ISC",
+  "description": "Implementation of an HLS (HTTP Live Streaming) server with pure Node.js"
+}
