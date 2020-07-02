@@ -3,12 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const { getVideoDurationInSeconds } = require('get-video-duration');
 const playListGenerator = require('./helpers/playlistGenerator');
+const mediaFinder = require('./helpers/mediaFinder');
 
 const PORT = 3000;
 const VIDEO_EXT = 'ts';
 const VIDEO_FILE_PATH = path.join(__dirname, `video/beach.${VIDEO_EXT}`);
-const SEGMENT_SIZE = 10000000;
-
+const SEGMENT_SIZE = 5000000;
 
 const size = fs.statSync(VIDEO_FILE_PATH).size;
 
@@ -26,7 +26,19 @@ const server = http.createServer( async (req, res) => {
 
     const playlist = playListGenerator(size, SEGMENT_SIZE, 'ts', videoDurationInSeconds);
 
-    if(req.url.match('playlist.m3u8')){
+    if(req.url.match(/.m3u8$/)){
+        const mediaName = req.url.replace('/','').split('.')[0];
+        const { videoFilePath } = mediaFinder('local', mediaName);
+        if (!videoFilePath) {
+            const headers = {'Content-Type': 'application/json'};
+            res.writeHead(404, headers);
+            res.write('{"msg":"Media not found"}');
+            return res.end();
+        };
+
+        const size = fs.statSync(videoFilePath).size;
+        const videoDurationInSeconds = await getVideoDurationInSeconds(videoFilePath);
+        const playlist = playListGenerator(size, SEGMENT_SIZE, 'ts', videoDurationInSeconds, mediaName, 'video');
         const headers = {
             'Content-Type':'text',
             'Content-Disposition':'attachment; playlist.m3u8'
@@ -36,19 +48,25 @@ const server = http.createServer( async (req, res) => {
         res.end();
 
     } else if (req.url.match(`.${VIDEO_EXT}`)){
+        const [ emptyStr, mediaName, stream, sequenceRequested ] = req.url.split('/');
+        const { videoFilePath } = mediaFinder('local', mediaName);
+        if (!videoFilePath) {
+            const headers = {'Content-Type': 'application/json'};
+            res.writeHead(404, headers);
+            res.write('{"msg":"Video not found"}');
+            return res.end();
+        };
 
         console.log(`Video segment requested: ${req.url}`);
 
         const headers = {
-            // 'Content-Length': `${5000}`,
-            // 'Content-Type': 'video/mp2t'
             'Content-Type': 'application/vnd.apple.mpegurl'
         };
         
-        const sequence = req.url.replace(`.${VIDEO_EXT}`, '').replace('/seq-','');
-        const readStream = videoSegmentStream(VIDEO_FILE_PATH, +sequence, SEGMENT_SIZE);
+        const sequence = +sequenceRequested.replace(`.${VIDEO_EXT}`, '').replace('seq-','');
+        const readStream = videoSegmentStream(videoFilePath, sequence, SEGMENT_SIZE);
 
-        readStream.on('end', () => console.log(`Video segment sent: ${req.url.replace('/', '')}`));
+        readStream.on('end', () => console.log(`Video segment sent: ${req.url.replace('/', '')}`)); // This should be done in the writestream
 
         if(readStream.error) {
             res.writeHead(500);
