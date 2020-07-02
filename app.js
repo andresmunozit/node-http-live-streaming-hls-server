@@ -7,24 +7,17 @@ const mediaFinder = require('./helpers/mediaFinder');
 
 const PORT = 3000;
 const VIDEO_EXT = 'ts';
-const VIDEO_FILE_PATH = path.join(__dirname, `video/beach.${VIDEO_EXT}`);
 const SEGMENT_SIZE = 5000000;
-
-const size = fs.statSync(VIDEO_FILE_PATH).size;
 
 const videoSegmentStream = (videoFilePath, sequence, segmentSize) => {
     if(!fs.existsSync(videoFilePath)) return {error: 'File not found'};
     const start = sequence * segmentSize;
-    const end = start + segmentSize;
+    const end = start + segmentSize - 1;
 
     return fs.createReadStream(videoFilePath, {start, end});
 };
 
 const server = http.createServer( async (req, res) => {
-
-    const videoDurationInSeconds = await getVideoDurationInSeconds(VIDEO_FILE_PATH);
-
-    const playlist = playListGenerator(size, SEGMENT_SIZE, 'ts', videoDurationInSeconds);
 
     if(req.url.match(/.m3u8$/)){
         const mediaName = req.url.replace('/','').split('.')[0];
@@ -81,5 +74,3 @@ const server = http.createServer( async (req, res) => {
 });
 
 server.listen( PORT, () => console.log(`HLS server listen at port: ${PORT}`));
-
-// http://localhost:3000/playlist.m3u8
