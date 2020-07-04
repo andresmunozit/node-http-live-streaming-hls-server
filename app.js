@@ -18,8 +18,7 @@ const videoSegmentStream = (videoFilePath, sequence, segmentSize) => {
 };
 
 const server = http.createServer( async (req, res) => {
-
-    if(req.url.match(/.m3u8$/)){
+    if(req.method === 'GET' && req.url.match(/.m3u8$/)){
         const mediaName = req.url.replace('/','').split('.')[0];
         const { videoFilePath } = mediaFinder('local', mediaName);
         if (!videoFilePath) {
@@ -40,7 +39,7 @@ const server = http.createServer( async (req, res) => {
         res.write(playlist);
         res.end();
 
-    } else if (req.url.match(`.${VIDEO_EXT}`)){
+    } else if (req.method === 'GET' && req.url.match(`.${VIDEO_EXT}`)){
         const [ emptyStr, mediaName, stream, sequenceRequested ] = req.url.split('/');
         const { videoFilePath } = mediaFinder('local', mediaName);
         if (!videoFilePath) {
