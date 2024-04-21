@@ -9,12 +9,17 @@ const PORT = 3000;
 const VIDEO_EXT = 'ts';
 const SEGMENT_SIZE = 5000000;
 
-const videoSegmentStream = (videoFilePath, sequence, segmentSize) => {
+const videoSegmentStream = (videoFilePath, sequence, segmentSize, isEnd) => {
     if(!fs.existsSync(videoFilePath)) return {error: 'File not found'};
     const start = sequence * segmentSize;
-    const end = start + segmentSize - 1;
+    const options = { start };
 
-    return fs.createReadStream(videoFilePath, {start, end});
+    if (!isEnd) {
+        const end = start + segmentSize - 1;
+        options.end = end;
+    }
+
+    return fs.createReadStream(videoFilePath, options);
 };
 
 const server = http.createServer( async (req, res) => {
@@ -55,8 +60,14 @@ const server = http.createServer( async (req, res) => {
             'Content-Type': 'application/vnd.apple.mpegurl'
         };
         
-        const sequence = +sequenceRequested.replace(`.${VIDEO_EXT}`, '').replace('seq-','');
-        const readStream = videoSegmentStream(videoFilePath, sequence, SEGMENT_SIZE);
+        let sequence, readStream;
+        if (sequenceRequested.includes("end")) {
+            sequence = sequenceRequested.replace(`-end.${VIDEO_EXT}`, "").replace("seq-", "");
+            readStream = videoSegmentStream(videoFilePath, sequence, SEGMENT_SIZE, true);
+        } else {
+            sequence = +sequenceRequested.replace(`.${VIDEO_EXT}`, "").replace("seq-", "");
+            readStream = videoSegmentStream(videoFilePath, sequence, SEGMENT_SIZE, false);
+        }
 
         readStream.on('end', () => console.log(`Video segment sent: ${req.url.replace('/', '')}`)); // This should be done in the writestream
 

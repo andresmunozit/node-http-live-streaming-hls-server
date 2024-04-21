@@ -20,6 +20,17 @@ const playListGenerator = (videoFileSize, segmentSize, fileExtension, videoDurat
     for (let sequence = 0; sequence < segmentsCount; sequence++) {
         playListBody = playListBody + segmentTemplate(sequence, fileExtension, segmentDuration, mediaName, stream);
     };
+    if (segmentsCount * segmentSize < videoFileSize) {
+      playListBody =
+        playListBody +
+        segmentTemplate(
+          segmentsCount + "-end",
+          fileExtension,
+          (videoDurationInSeconds - segmentDuration * segmentsCount).toFixed(2),
+          mediaName,
+          stream
+        );
+    }
     return playListStart + playListBody + playListEnd;
 };
 
